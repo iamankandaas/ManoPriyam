@@ -21,6 +21,7 @@ sentence-transformers
 fer
 opencv-python
 Pillow
+moviepy
 
 # Database & Other Utilities
 SQLAlchemy
