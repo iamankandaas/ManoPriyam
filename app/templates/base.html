@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+  <nav>
+    {% if current_user.is_authenticated %}
+      <!-- streak with dynamic tooltip set in JS -->
+      <span id="navStreak" class="nav-streak">🔥 {{ current_user.current_streak }}</span>
+
+      {# compute next-level threshold #}
+      {% set next_level = current_user.level + 1 %}
+      {% if next_level in current_user.LEVEL_THRESHOLDS %}
+        {% set thresh = current_user.LEVEL_THRESHOLDS[next_level] %}
+      {% else %}
+        {% set thresh = current_user.LEVEL_THRESHOLDS[current_user.level] %}
+      {% endif %}
+
+      <!-- level with current/threshold XP in native tooltip -->
+      <span class="nav-level"
+            title="{{ current_user.xp }} / {{ thresh }} XP">
+        💪 {{ current_user.level }}
+      </span>
+    {% endif %}
+
+    <a href="{{ url_for('bp.landing') }}"
+       class="{% if request.endpoint=='bp.landing' %}active{% endif %}">
+      Home
+    </a>
+
+    {% if current_user.is_authenticated %}
+      <a href="{{ url_for('bp.entry') }}"
+         class="{% if request.endpoint=='bp.entry' %}active{% endif %}">New Entry</a>
+      <a href="{{ url_for('bp.history') }}"
+         class="{% if request.endpoint=='bp.history' %}active{% endif %}">History</a>
+        <a href="{{ url_for('bp.quests') }}"
+     class="{% if request.endpoint=='bp.quests' %}active{% endif %}">Quests</a>
+      <a href="{{ url_for('bp.trends') }}"
+         class="{% if request.endpoint=='bp.trends' %}active{% endif %}">Trends</a>
+        <a href="{{ url_for('bp.friends') }}"
+         class="{% if request.endpoint=='bp.friends' %}active{% endif %}">
+        Friends
+      </a>
+    
+      <a href="{{ url_for('bp.logout') }}">Logout</a>
+    {% else %}
+      <a href="{{ url_for('bp.login') }}"
+         class="{% if request.endpoint=='bp.login' %}active{% endif %}">Login</a>
+      <a href="{{ url_for('bp.register') }}"
+         class="{% if request.endpoint=='bp.register' %}active{% endif %}">Register</a>
+    {% endif %}
+  </nav>
+
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- hide navbar when scrolling down; show only at top -->
+  <script>
+    (function(){
+      const nav = document.querySelector('nav');
+      window.addEventListener('scroll', () => {
+        if (window.scrollY > 0) nav.classList.add('hidden');
+        else nav.classList.remove('hidden');
+      });
+    })();
+  </script>
+
+  <!-- set dynamic tooltip on streak based on time of day -->
+  <script>
+    (function(){
+      const streakEl = document.getElementById('navStreak');
+      if (!streakEl) return;
+      const hour = new Date().getHours();
+      let tip;
+      if (hour >= 18) {
+        tip = "🌙 It’s late—log now or you might break your streak!";
+      } else if (hour >= 12) {
+        tip = "☀️ Good afternoon! Keep your streak alive—share your mid‑day thoughts.";
+      } else {
+        tip = "🌅 Good morning! A fresh day to journal—keep that streak going!";
+      }
+      streakEl.title = tip;
+    })();
+  </script>
+</body>
+</html>

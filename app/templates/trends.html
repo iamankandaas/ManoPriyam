@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+{% block title %}Insights & Achievements – Manopriyam{% endblock %}
+
+{% block content %}
+<style>
+  /* restore normal vertical scrolling */
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: auto;
+    overflow-y: auto;
+  }
+
+  /* blurred background layer (same as entry & history) */
+  body::before {
+    content: "";
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: url('{{ url_for('static', filename='entry-bg.png') }}') no-repeat center center fixed;
+    background-size: cover;
+    background-position: center 13%;
+    filter: blur(6px);
+    z-index: -1;
+  }
+
+  /* make trends container wider and push below navbar */
+  .trends-container {
+    position: relative;
+    background: #fff;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    padding: 1.5rem;
+    border-radius: 4px;
+    margin: 6rem auto;    /* push down below the fixed navbar */
+    max-width: 900px;     /* wider than default */
+    width: 95%;           /* nearly full viewport width */
+  }
+
+  /* each section wrapper */
+  .trends-section {
+    margin-bottom: 2.5rem;
+  }
+  .trends-section h3 {
+    margin-bottom: 1rem;
+    font-size: 1.25rem;
+    border-bottom: 2px solid #eee;
+    padding-bottom: 0.5rem;
+  }
+
+  /* badge row */
+  .badge-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    justify-content: center;
+  }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.8rem;
+    border-radius: 999px;
+    font-weight: 500;
+    transition: box-shadow 0.2s, opacity 0.2s;
+  }
+  .badge.claimed {
+    background: #fffbea;
+    color: #b37400;
+    box-shadow: 0 0 10px rgba(179,116,0,0.7);
+  }
+  .badge.unclaimed {
+    background: #f0f0f0;
+    color: #999;
+    opacity: 0.6;
+  }
+
+  /* row wrapper to place charts side by side */
+  .chart-row {
+    display: flex;
+    gap: 2rem;
+  }
+  /* each chart takes equal space */
+  .chart-wrapper {
+    flex: 1;
+    height: 300px;        /* fixed height for Chart.js */
+  }
+  .chart-wrapper h4 {
+    margin-bottom: 0.5rem;
+    font-size: 1.1rem;
+  }
+  .chart-wrapper canvas {
+    width: 100% !important;
+    height: 100% !important;
+  }
+  .theme-list {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+.theme-list li {
+  background: #f9f9f9;
+  padding: .75rem 1rem;
+  border-radius: 4px;
+  flex: 1 1 200px;
+}
+
+</style>
+
+<div class="trends-container">
+
+  <!-- 1) Badges Earned Section -->
+  <div class="trends-section">
+    <h3>🏅 Your Badges</h3>
+    <div class="badge-row">
+      {% for b in all_badges %}
+        {% if b in current_user.badges %}
+          <div class="badge claimed" title="{{ b.description }}">
+            🏅 {{ b.name }}
+          </div>
+        {% else %}
+          <div class="badge unclaimed" title="{{ b.description }}">
+            🏅 {{ b.name }}
+          </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- 2) Mood Charts Section -->
+  <div class="trends-section">
+    <h3>📊 Mood Charts</h3>
+    <div class="chart-row">
+      <div class="chart-wrapper">
+        <h4>Entries per Day</h4>
+        <canvas id="dailyChart"></canvas>
+      </div>
+      <div class="chart-wrapper">
+        <h4>Combined Emotion Distribution</h4>
+        <canvas id="combinedPie"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3) Your Themes Section -->
+<div class="trends-section">
+  <h3>🔍 Your Themes</h3>
+  {% if themes %}
+    <ul class="theme-list">
+      {% for t in themes %}
+        <li>
+          <strong>{{ t.label }}</strong><br>
+          <small>Examples: {{ t.examples | join(', ') }}</small>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>No themes yet — write a few more entries this month to see your topics emerge.</p>
+  {% endif %}
+</div>
+
+
+  <!-- 4) Monthly Word-Cloud Section -->
+  {% if wordcloud_img %}
+  <div class="trends-section">
+    <h3>🌥️ Word-Cloud: {{ wordcloud_month }}</h3>
+    <div class="wordcloud-wrapper" style="text-align:center; margin-top:1rem;">
+      <img
+        src="{{ url_for('static', filename=wordcloud_img) }}"
+        alt="Monthly Word Cloud"
+        style="max-width:100%; height:auto; box-shadow:0 2px 5px rgba(0,0,0,0.1);"
+      />
+    </div>
+  </div>
+  {% endif %}
+
+
+<!-- 5) Anomaly Alert -->
+  <div class="trends-section">
+    <h3>⚠️ Anomaly Alert</h3>
+    {% if anomaly %}
+      <p>{{ anomaly.message }}</p>
+    {% else %}
+      <p>All systems nominal—your journaling pace is on track.</p>
+    {% endif %}
+  </div>
+
+  <!-- inside trends-container, after the chart-row -->
+<div class="trends-section weekly-recap">
+  <h3>📆 Weekly Recap</h3>
+  <p id="recap-highlight">Loading summary…</p>
+  <p id="recap-suggestion" class="suggestion"></p>
+</div>
+
+</div>
+
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  const dailyData    = JSON.parse('{{ daily_counts|safe }}');
+  const combinedData = JSON.parse('{{ combined_dist|safe }}');
+
+  // Bar chart: entries per day
+  new Chart(document.getElementById('dailyChart'), {
+    type: 'bar',
+    data: {
+      labels: Object.keys(dailyData),
+      datasets: [{
+        label: 'Entries',
+        data: Object.values(dailyData),
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: { y: { beginAtZero: true } }
+    }
+  });
+
+  // Pie chart: combined_emotion distribution
+  new Chart(document.getElementById('combinedPie'), {
+    type: 'pie',
+    data: {
+      labels: Object.keys(combinedData),
+      datasets: [{ data: Object.values(combinedData) }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false
+    }
+  });
+
+  // fetch and display the summary
+  fetch("{{ url_for('bp.summary') }}")
+    .then(r => r.json())
+    .then(data => {
+      // update highlight & recommendation
+      document.getElementById('recap-highlight').textContent = data.highlight;
+      document.getElementById('recap-suggestion').textContent = data.recommendation;
+
+      // optionally, re-draw the daily chart to ensure it matches summary
+      // (or leave existing chart as-is)
+    })
+    .catch(console.error);
+
+</script>
+{% endblock %}

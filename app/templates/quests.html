@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Quests – Manopriyam{% endblock %}
+
+{% block content %}
+<style>
+  /* restore normal vertical scrolling */
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: auto;
+    overflow-y: auto;
+  }
+
+  /* blurred background layer (same as entry & history & trends) */
+  body::before {
+    content: "";
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: url('{{ url_for('static', filename='entry-bg.png') }}')
+                no-repeat center center fixed;
+    background-size: cover;
+    background-position: center 13%;
+    filter: blur(6px);
+    z-index: -1;
+  }
+
+  /* container styling */
+  .quests-container {
+    position: relative;
+    background: #fff;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    padding: 1.5rem;
+    border-radius: 4px;
+    margin: 6rem auto;    /* pushes container below navbar */
+    max-width: 600px;
+    width: 90%;
+  }
+</style>
+
+<div class="quests-container">
+  <h2>Your Quests</h2>
+  <table class="history-table">
+    <thead>
+      <tr>
+        <th>Quest</th>
+        <th>Frequency</th>
+        <th>Reward</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for q in quests %}
+      <tr>
+        <td>
+          <strong>{{ q.name }}</strong><br>
+          <small>{{ q.desc }}</small>
+        </td>
+        <td>{{ q.freq.title() }}</td>
+        <td>{{ q.xp }} XP</td>
+        <td>
+          {% if q.done %}
+            ✅ Completed
+          {% else %}
+            ❌ Pending
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

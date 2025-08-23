@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}Your History – Manopriyam{% endblock %}
+
+{% block content %}
+<style>
+  /* restore normal vertical scrolling */
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: auto;
+    overflow-y: auto;
+  }
+
+  /* blurred background layer (same as entry page) */
+  body::before {
+    content: "";
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: url('{{ url_for('static', filename='entry-bg.png') }}') no-repeat center center fixed;
+    background-size: cover;
+    background-position: center 13%;
+    filter: blur(6px);
+    z-index: -1;
+  }
+
+  /* history container */
+  .history-container {
+    position: relative;
+    background: #fff;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    padding: 1.5rem;
+    border-radius: 4px;
+    margin: 6rem auto;    /* push down below navbar */
+    width: 100%;      /* fill the full screen width */
+    max-width: 1500px;/* but cap at 1,200px */
+  }
+
+  /* table inputs readability */
+  .history-table th,
+  .history-table td {
+    background: rgba(255,255,255,0.9);
+  }
+</style>
+
+<div class="history-container">
+  <h2>Glad you’re here, {{ current_user.email.split('@')[0] }}! Let’s look at your recent check‑ins:</h2>
+
+
+  <form method="get" class="filters" style="margin-bottom:1.5rem;">
+    <label>Start:
+      <input type="date" name="start_date" value="{{ start_date }}">
+    </label>
+    <label>End:
+      <input type="date" name="end_date" value="{{ end_date }}">
+    </label>
+    <label>Month:
+      <select name="month">
+        <option value="">–</option>
+        {% for m in range(1,13) %}
+        <option value="{{m}}" {% if m==month %}selected{% endif %}>{{m}}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Year:
+      <input type="number" name="year" min="2020" max="2100" value="{{ year }}">
+    </label>
+    <label>Emotion:
+      <select name="combined_emotion">
+        <option value="">All</option>
+        {% for emo in all_emotions %}
+        <option value="{{emo}}" {% if emo==combined_emotion %}selected{% endif %}>{{emo}}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Feedback:
+      <select name="feedback">
+        <option value="all" {% if feedback=='all' %}selected{% endif %}>All</option>
+        <option value="liked" {% if feedback=='liked' %}selected{% endif %}>Liked</option>
+        <option value="disliked" {% if feedback=='disliked' %}selected{% endif %}>Disliked</option>
+      </select>
+    </label>
+    <button type="submit" class="btn">Apply</button>
+  </form>
+
+  {% if entries %}
+    <table class="history-table">
+      <thead>
+        <tr>
+          <th>Date (IST)</th>
+          <th>Text</th>
+          <th>Text Emotion</th>
+          <th>Face Emotion</th>
+          <th>Combined Emotion</th>
+          <th>Suggestion</th>
+          <th>Your Feedback</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in entries %}
+        <tr>
+          <td>{{ e.timestamp|localtime }}</td>
+          <td>{{ e.text_input|e }}</td>
+          <td>{{ e.text_emotion }} ({{ (e.text_confidence*100)|round(1) }}%)</td>
+          <td>
+            {{ e.face_emotion or '—' }}
+            {% if e.face_emotion %}( {{ (e.face_confidence*100)|round(1) }}% ){% endif %}
+          </td>
+          <td>{{ e.combined_emotion }} ({{ (e.combined_confidence*100)|round(1) }}%)</td>
+          <td>
+            {{ e.suggestion }}
+          </td>
+          <td>
+            {% if e.feedback is none %}
+              <form method="post" action="{{ url_for('bp.feedback', entry_id=e.id) }}">
+                <button name="feedback" value="up">👍</button>
+                <button name="feedback" value="down">👎</button>
+              </form>
+            {% elif e.feedback %}
+              👍 Liked
+            {% else %}
+              👎 Disliked
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No entries match those filters. <a href="{{ url_for('bp.entry') }}">Make one now</a>.</p>
+  {% endif %}
+</div>
+{% endblock %}

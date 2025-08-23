@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{% block title %}New Entry – Manopriyam{% endblock %}
+
+{% block content %}
+<style>
+  /* restore normal vertical scrolling */
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: auto;
+    overflow-y: auto;
+  }
+
+  /* blurred background layer */
+  body::before {
+    content: "";
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: url('{{ url_for('static', filename='entry-bg.png') }}')
+                no-repeat center center fixed;
+    background-size: cover;
+    background-position: center 13%;
+    filter: blur(6px);
+    z-index: -1;
+  }
+
+  /* form container */
+  .entry-container {
+    position: relative;
+    background: #fff;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    padding: 1.5rem;
+    border-radius: 4px;
+    margin: 6rem auto;    /* pushes container down below navbar */
+    max-width: 600px;
+  }
+
+  /* XP bar */
+  .xp-container {
+    margin-bottom: 1rem;
+  }
+  .xp-bar {
+    background: #eee;
+    border-radius: 4px;
+    overflow: hidden;
+    height: 1rem;
+  }
+  .xp-fill {
+    background: #4a90e2;
+    height: 100%;
+    transition: width 0.3s ease;
+  }
+  .xp-text {
+    font-size: 0.9rem;
+    margin-top: 0.25rem;
+    text-align: right;
+    color: #555;
+  }
+
+  /* form inputs */
+  .form-control,
+  textarea,
+  input[type="time"] {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    box-sizing: border-box;
+    font-size: 1rem;
+    resize: vertical;
+    background: #fff;
+  }
+
+  .form-group label {
+    font-weight: bold;
+    display: block;
+    margin-bottom: 0.5rem;
+  }
+
+  /* reminder controls inline */
+  .reminder-group label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .reminder-group input[type="checkbox"] {
+    transform: scale(1.2);
+  }
+</style>
+
+<div class="entry-container">
+  <!-- XP progress toward next level -->
+  <div class="xp-container">
+    <div class="xp-bar">
+      <div class="xp-fill"
+           style="width: {{ current_user.xp_progress_percent }}%;"></div>
+    </div>
+    <div class="xp-text">
+      {{ current_user.xp }} / {{ current_user.xp_for_next_level }} XP
+    </div>
+  </div>
+
+  <h2>Hey {{ current_user.email.split('@')[0] }}, how are you feeling today?</h2>
+
+  <form id="entry-form" method="post" action="{{ url_for('bp.entry') }}">
+    <div class="form-group">
+      <label for="text_input">What’s on your mind today?</label>
+      <textarea
+        id="text_input"
+        name="text_input"
+        class="form-control"
+        placeholder="Share anything—big or small…"
+        rows="4"
+        required
+      ></textarea>
+    </div>
+
+    <div class="form-group webcam-group">
+      <label>Webcam capture</label><br>
+      <video id="video" width="320" height="240" autoplay></video><br>
+      <button type="button" id="capture" class="btn btn-secondary">Capture</button>
+      <canvas id="canvas" width="320" height="240" style="display:none;"></canvas>
+      <input type="hidden" id="image_data" name="image_data">
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Submit</button>
+    </div>
+  </form>
+
+  {% if result %}
+    <div class="results">
+      <h3>Here’s what I found:</h3>
+      <p><strong>Text emotion:</strong> {{ text_emotion }} ({{ text_confidence }}%)</p>
+      <p><strong>Face emotion:</strong> {{ face_emotion or 'No face detected' }} ({{ face_confidence }}%)</p>
+      <p><strong>Combined emotion:</strong> {{ combined_emotion }} ({{ combined_confidence }}%)</p>
+      <div class="suggestion">
+        <h4>Suggestion</h4>
+        <p>{{ suggestion }}</p>
+      </div>
+    </div>
+  {% endif %}
+</div>
+
+<script>
+  // Simple webcam setup
+  const video = document.getElementById('video');
+  const canvas = document.getElementById('canvas');
+  const captureBtn = document.getElementById('capture');
+  const imageInput = document.getElementById('image_data');
+
+  navigator.mediaDevices.getUserMedia({ video: true })
+    .then(stream => video.srcObject = stream)
+    .catch(console.error);
+
+  captureBtn.addEventListener('click', () => {
+    canvas.style.display = 'block';
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    imageInput.value = canvas.toDataURL('image/png');
+  });
+</script>
+{% endblock %}

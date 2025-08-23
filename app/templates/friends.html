@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}Friends – Manopriyam{% endblock %}
+
+{% block content %}
+<style>
+  html, body { margin:0; padding:0; overflow-y:auto; height:auto; }
+  body::before {
+    content:""; position:fixed; inset:0;
+    background: url('{{ url_for('static', filename='entry-bg.png') }}')
+                no-repeat center center fixed;
+    background-size:cover; filter:blur(6px); z-index:-1;
+  }
+  .friends-container {
+    position:relative; background:#fff;
+    margin:6rem auto; padding:1.5rem;
+    border-radius:4px; box-shadow:0 2px 5px rgba(0,0,0,0.1);
+    max-width:900px; width:95%;
+  }
+  .chart-wrapper { height:400px; }
+  .chart-wrapper h3 { margin-bottom:0.5rem; }
+  .chart-wrapper canvas { width:100% !important; height:100% !important; }
+  .history-table { width:100%; border-collapse:collapse; margin-top:1rem; }
+  .history-table th, .history-table td {
+    border:1px solid #ddd; padding:0.5rem; text-align:left;
+  }
+  .history-table th { background:#f0f0f0; }
+</style>
+
+<div class="friends-container">
+  <h2>Your Friends’ Last‑Week Activity</h2>
+  <p>This is a supportive view—see how many times everyone checked in and how often the AI suggestion was helpful.</p>
+
+  <div class="chart-wrapper">
+    <h3>Entries vs Helpful Suggestions</h3>
+    <canvas id="friendsChart"></canvas>
+  </div>
+
+  <noscript>
+    <table class="history-table">
+      <thead>
+        <tr><th>User</th><th>Entries (7d)</th><th>Helpful Suggestions</th></tr>
+      </thead>
+      <tbody>
+        {% for s in stats %}
+          <tr>
+            <td>{{ s.user == current_user.email and "You" or s.user }}</td>
+            <td>{{ s.total }}</td>
+            <td>{{ s.helpful }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </noscript>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  const labels       = JSON.parse('{{ chart_labels|safe }}');
+  const entries      = JSON.parse('{{ chart_entries|safe }}');
+  const helpfuls     = JSON.parse('{{ chart_helpful|safe }}');
+
+  new Chart(document.getElementById('friendsChart'), {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'Entries (7d)',
+          data: entries,
+          backgroundColor: 'rgba(54, 162, 235, 0.6)',
+          borderColor:   'rgba(54, 162, 235, 1)',
+          borderWidth: 1
+        },
+        {
+          label: 'Helpful Suggestions',
+          data: helpfuls,
+          backgroundColor: 'rgba(255, 99, 132, 0.6)',
+          borderColor:   'rgba(255, 99, 132, 1)',
+          borderWidth: 1
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: {
+          beginAtZero: true,
+          title: { display: true, text: 'Count' }
+        }
+      }
+    }
+  });
+</script>
+{% endblock %}
