@@ -12,6 +12,7 @@ openai
 pandas
 scikit-learn
 nltk
+tensorflow-cpu
 
 # Transformers & PyTorch Ecosystem
 transformers
@@ -24,6 +25,7 @@ fer
 opencv-python
 Pillow
 moviepy
+imageio-ffmpeg
 
 # Other Utilities
 openpyxl
