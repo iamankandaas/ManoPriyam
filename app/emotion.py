@@ -4,7 +4,7 @@ import io
 import base64
 import numpy as np
 from PIL import Image
-from fer.fer import FER
+from fer import FER
 import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
