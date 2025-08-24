@@ -4,36 +4,40 @@ import io
 import base64
 import numpy as np
 from PIL import Image
-from fer.fer import FER
+from fer.fer import FER # Using the specific import for stability
 import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
-# --- CONFIGURATION ---
-MODEL_A_PATH = './model_a/checkpoint-505'
-MODEL_B_PATH = './model_b/checkpoint-404'
+# --- FINAL CONFIGURATION ---
+# Replace "your-hf-username" with your actual Hugging Face username.
+HF_REPO_ID = "iamankn/manopriyam-emotion-ensemble" 
 
-# Initialize face detector once
+# --- Initialize face detector once ---
+# This feature is now stable because our Dockerfile and requirements are correct.
 face_detector = FER(mtcnn=True)
 
-# --- NEW ENSEMBLE MODEL LOADING ---
+# --- NEW ENSEMBLE MODEL LOADING FROM HUGGING FACE HUB ---
 try:
-    print("Loading ensemble models for text emotion...")
-    # We only need one tokenizer as both models share the same kind
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_B_PATH)
+    print("Loading ensemble models from Hugging Face Hub...")
     
-    model_a = AutoModelForSequenceClassification.from_pretrained(MODEL_A_PATH)
-    model_b = AutoModelForSequenceClassification.from_pretrained(MODEL_B_PATH)
+    # Load the tokenizer from the checkpoint-404 folder on the Hub
+    tokenizer = AutoTokenizer.from_pretrained(HF_REPO_ID, subfolder="checkpoint-404")
     
+    # Load model_a from the checkpoint-505 folder on the Hub
+    model_a = AutoModelForSequenceClassification.from_pretrained(HF_REPO_ID, subfolder="checkpoint-505")
+    
+    # Load model_b from the checkpoint-404 folder on the Hub
+    model_b = AutoModelForSequenceClassification.from_pretrained(HF_REPO_ID, subfolder="checkpoint-404")
+
     # Put models in evaluation mode
     model_a.eval()
     model_b.eval()
     
-    print("Ensemble models loaded successfully!")
+    print("Ensemble models loaded successfully from Hugging Face Hub!")
 
 except Exception as e:
-    print(f"FATAL: Could not load the fine-tuned ensemble models. Error: {e}")
-    # If the custom models can't load, we cannot proceed with text analysis.
-    # We will create placeholder objects so the app doesn't crash on startup.
+    print(f"FATAL: Could not load the fine-tuned ensemble models from Hugging Face. Error: {e}")
+    # Create placeholder objects so the app doesn't crash on startup.
     tokenizer, model_a, model_b = None, None, None
 
 
