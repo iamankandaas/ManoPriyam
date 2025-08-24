@@ -28,5 +28,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Step 7: Tell Docker what command to run when the container starts.
-# This is the new, correct, dynamic line
-CMD ["gunicorn", "run:app", "--bind", "0.0.0.0:$PORT"]
+# This is the new, correct "shell" format
+CMD gunicorn run:app --bind 0.0.0.0:$PORT
