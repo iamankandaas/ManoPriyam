@@ -4,87 +4,76 @@ import io
 import base64
 import numpy as np
 from PIL import Image
-from fer.fer import FER # Using the specific import for stability
+from fer import FER
 import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
-# --- FINAL CONFIGURATION ---
-# Replace "your-hf-username" with your actual Hugging Face username.
+# --- CONFIGURATION ---
+# Replace with your actual Hugging Face username and repo name
 HF_REPO_ID = "iamankn/manopriyam-emotion-ensemble" 
 
+# --- GLOBAL MODEL CACHE ---
+# We initialize the models as None. They will be loaded only when needed.
+MODELS_CACHE = {
+    "tokenizer": None,
+    "model_a": None,
+    "model_b": None
+}
+
 # --- Initialize face detector once ---
-# This feature is now stable because our Dockerfile and requirements are correct.
 face_detector = FER(mtcnn=True)
 
-# --- NEW ENSEMBLE MODEL LOADING FROM HUGGING FACE HUB ---
-try:
-    print("Loading ensemble models from Hugging Face Hub...")
-    
-    # Load the tokenizer from the checkpoint-404 folder on the Hub
-    tokenizer = AutoTokenizer.from_pretrained(HF_REPO_ID, subfolder="checkpoint-404")
-    
-    # Load model_a from the checkpoint-505 folder on the Hub
-    model_a = AutoModelForSequenceClassification.from_pretrained(HF_REPO_ID, subfolder="checkpoint-505")
-    
-    # Load model_b from the checkpoint-404 folder on the Hub
-    model_b = AutoModelForSequenceClassification.from_pretrained(HF_REPO_ID, subfolder="checkpoint-404")
-
-    # Put models in evaluation mode
-    model_a.eval()
-    model_b.eval()
-    
-    print("Ensemble models loaded successfully from Hugging Face Hub!")
-
-except Exception as e:
-    print(f"FATAL: Could not load the fine-tuned ensemble models from Hugging Face. Error: {e}")
-    # Create placeholder objects so the app doesn't crash on startup.
-    tokenizer, model_a, model_b = None, None, None
-
+# --- NEW LAZY LOADING FUNCTION ---
+def load_models_if_needed():
+    """Checks if models are loaded and loads them if they are not."""
+    if MODELS_CACHE["tokenizer"] is None:
+        print("LAZY LOADING: Models not found in cache. Loading from Hugging Face Hub...")
+        try:
+            MODELS_CACHE["tokenizer"] = AutoTokenizer.from_pretrained(HF_REPO_ID, subfolder="checkpoint-404")
+            MODELS_CACHE["model_a"] = AutoModelForSequenceClassification.from_pretrained(HF_REPO_ID, subfolder="checkpoint-505")
+            MODELS_CACHE["model_b"] = AutoModelForSequenceClassification.from_pretrained(HF_REPO_ID, subfolder="checkpoint-404")
+            
+            MODELS_CACHE["model_a"].eval()
+            MODELS_CACHE["model_b"].eval()
+            print("LAZY LOADING: Models loaded and cached successfully!")
+        except Exception as e:
+            print(f"FATAL: Could not lazy-load models. Error: {e}")
 
 def get_text_emotion(text: str):
     """
     Analyzes text using an ensemble of two fine-tuned models.
-    Returns: (label: str, confidence: float)
+    Loads models on the first run.
     """
-    # If models failed to load, return a safe default.
+    # Step 1: Ensure models are loaded before proceeding.
+    load_models_if_needed()
+
+    # Step 2: Check if loading failed.
+    tokenizer = MODELS_CACHE["tokenizer"]
+    model_a = MODELS_CACHE["model_a"]
+    model_b = MODELS_CACHE["model_b"]
+
     if not all([tokenizer, model_a, model_b]):
         return "neutral", 0.0
 
+    # Step 3: Perform prediction (same as before).
     try:
-        # 1. Tokenize the input text
         inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True, max_length=128)
-
-        # 2. Get predictions (logits) from both models without computing gradients
         with torch.no_grad():
             logits_a = model_a(**inputs).logits
             logits_b = model_b(**inputs).logits
-
-        # 3. Average the logits (the core of the ensemble)
         ensembled_logits = (logits_a + logits_b) / 2.0
-
-        # 4. Convert logits to probabilities using softmax
         probabilities = torch.nn.functional.softmax(ensembled_logits, dim=-1)[0]
-
-        # 5. Get the winning label and its confidence score
         best_prob_index = torch.argmax(probabilities).item()
-        
-        # Use model_b's config to map the index back to a string label
         label = model_b.config.id2label[best_prob_index].lower()
         score = probabilities[best_prob_index].item()
-        
         return label, score
-
     except Exception as e:
         print(f"Error during text emotion analysis: {e}")
-        # If anything goes wrong during prediction, return a neutral fallback
         return "neutral", 0.0
-
 
 def get_face_emotion(image_data_uri: str):
     """
-    Decode the base64 Data-URI, run FER, 
-    and return (label: str, confidence: float),
-    or (None, 0.0) if no face is detected or on any error.
+    Decodes the base64 Data-URI, run FER, and returns (label: str, confidence: float).
     """
     try:
         header, b64 = image_data_uri.split(",", 1)
@@ -96,5 +85,6 @@ def get_face_emotion(image_data_uri: str):
             return None, 0.0
         label, score = top
         return label, float(score)
-    except Exception:
+    except Exception as e:
+        print(f"Error during face emotion analysis: {e}")
         return None, 0.0
