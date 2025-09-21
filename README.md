@@ -77,18 +77,12 @@ This iterative journey mirrors **how real-world AI products are built** — by r
 * **Data Scarcity** → Built my own dataset, cleaned, balanced, augmented.
 * **Dependency Conflicts** → Solved by Dockerizing.
 * **Resource Constraints** → Optimized models to run within budget limits.
-* **Deployment Limits** → Free-tier servers couldn’t handle full transformer stacks → adapted by providing recorded demo.
+* **Deployment Limits** → Free-tier servers couldn’t handle full transformer stacks → adapted by providing screens of my application.
 
 Each of these hurdles added **practical industry-level experience** in MLOps, deployment, and data-centric AI.
 
 ---
 
-## 🎥 Demo
-
-A complete demo of Manopriyam is available here:
-👉 [Demo Video Link](#) *(Google Drive / YouTube)*
-
----
 
 ## 🔮 What’s Next
 
